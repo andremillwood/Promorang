@@ -1,0 +1,1 @@
+ALTER TABLE content_pieces ADD COLUMN creator_username TEXT;

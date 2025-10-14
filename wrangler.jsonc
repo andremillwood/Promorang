@@ -1,29 +1,18 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-
-  // Core Worker identity
   "name": "promorang",
-  "main": "src/worker/index.ts",
-
-
-  // Compatibility + environment
+  "main": "./src/worker/index.ts",
+  "no_bundle": false,
   "compatibility_date": "2025-06-17",
   "compatibility_flags": ["nodejs_compat"],
-
-  // Keep secrets defined in Cloudflare Dashboard between deployments
-  "keep_vars": true,
-
-  // Observability
-  "observability": { "enabled": true },
-
-  // Environment variables (set in Cloudflare Dashboard)
-  "vars": {
-    "GOOGLE_CLIENT_ID": "YOUR_GOOGLE_CLIENT_ID",
-    "GOOGLE_CLIENT_SECRET": "YOUR_GOOGLE_CLIENT_SECRET",
-    "JWT_SECRET": "YOUR_JWT_SECRET"
+  "observability": {
+    "enabled": true
   },
-
-  // Database binding
+  "upload_source_maps": true,
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
   "d1_databases": [
     {
       "binding": "DB",

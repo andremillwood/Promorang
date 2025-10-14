@@ -1,22 +1,22 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
 import { AuthProvider, useAuth } from '@getmocha/users-service/react';
-import HomePage from "./pages/Home";
-import AuthCallbackPage from "./pages/AuthCallback";
-import HomeFeedPage from "./pages/HomeFeed";
-import EarnPage from "./pages/Earn";
-import CreatePage from "./pages/Create";
-import InvestPage from "./pages/Invest";
-import WalletPage from "./pages/Wallet";
-import GrowthHubPage from "./pages/GrowthHub";
-import ProfilePage from "./pages/Profile";
-import ContentDetailPage from "./pages/ContentDetail";
-import TaskDetailPage from "./pages/TaskDetail";
-import LeaderboardPage from "./pages/Leaderboard";
-import AdvertiserDashboard from "./pages/AdvertiserDashboard";
-import AdvertiserOnboarding from "./pages/AdvertiserOnboarding";
-import ErrorPage from "./pages/ErrorPage";
-import Layout from "./components/Layout";
-import ErrorBoundary from "./components/ErrorBoundary";
+import HomePage from "@/react-app/pages/Home";
+import AuthCallbackPage from "@/react-app/pages/AuthCallback";
+import HomeFeedPage from "@/react-app/pages/HomeFeed";
+import EarnPage from "@/react-app/pages/Earn";
+import CreatePage from "@/react-app/pages/Create";
+import InvestPage from "@/react-app/pages/Invest";
+import WalletPage from "@/react-app/pages/Wallet";
+import GrowthHubPage from "@/react-app/pages/GrowthHub";
+import ProfilePage from "@/react-app/pages/Profile";
+import ContentDetailPage from "@/react-app/pages/ContentDetail";
+import TaskDetailPage from "@/react-app/pages/TaskDetail";
+import LeaderboardPage from "@/react-app/pages/Leaderboard";
+import AdvertiserDashboard from "@/react-app/pages/AdvertiserDashboard";
+import AdvertiserOnboarding from "@/react-app/pages/AdvertiserOnboarding";
+import ErrorPage from "@/react-app/pages/ErrorPage";
+import Layout from "@/react-app/components/Layout";
+import ErrorBoundary from "@/react-app/components/ErrorBoundary";
 
 
 

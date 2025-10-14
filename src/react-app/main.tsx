@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "./index.css";
-import App from "./App.tsx";
+import "@/react-app/index.css";
+import App from "@/react-app/App.tsx";
 import { setupGlobalErrorHandlers } from "./utils/errorHandler";
 
 // Setup global error handlers

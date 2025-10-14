@@ -15,8 +15,27 @@ import {
   Shield
 } from 'lucide-react';
 
+// Utility function for Google OAuth flow
+const handleGoogleSignIn = async () => {
+  try {
+    const response = await fetch("/api/auth/google/url", { credentials: 'include' });
+    const data = await response.json();
+
+    if (response.ok && data.url) {
+      console.log("Redirecting to Google OAuth:", data.url);
+      window.location.href = data.url;
+    } else {
+      console.error("OAuth not configured or endpoint error:", data);
+      alert("Sign-in is not available right now. Please try again later.");
+    }
+  } catch (err) {
+    console.error("Error fetching OAuth URL:", err);
+    alert("Sign-in failed. Please check your connection and try again.");
+  }
+};
+
 export default function Home() {
-  const { user, isPending, redirectToLogin } = useAuth();
+  const { user, isPending } = useAuth();
   const navigate = useNavigate();
   const [activeStats, setActiveStats] = useState({
     earners: 127,
@@ -76,13 +95,7 @@ export default function Home() {
               <button
                 onClick={async () => {
                   console.log('Sign In clicked');
-                  try {
-                    console.log('Calling redirectToLogin...');
-                    await redirectToLogin();
-                    console.log('redirectToLogin completed');
-                  } catch (error) {
-                    console.error('redirectToLogin error:', error);
-                  }
+                  await handleGoogleSignIn();
                 }}
                 className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
               >
@@ -91,13 +104,7 @@ export default function Home() {
               <button
                 onClick={async () => {
                   console.log('Start Earning clicked');
-                  try {
-                    console.log('Calling redirectToLogin...');
-                    await redirectToLogin();
-                    console.log('redirectToLogin completed');
-                  } catch (error) {
-                    console.error('redirectToLogin error:', error);
-                  }
+                  await handleGoogleSignIn();
                 }}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               >
@@ -156,9 +163,9 @@ export default function Home() {
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
               <button
-                onClick={() => {
+                onClick={async () => {
                   console.log('Start Earning Today clicked');
-                  redirectToLogin();
+                  await handleGoogleSignIn();
                 }}
                 className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200 shadow-xl hover:shadow-2xl transform hover:-translate-y-1 flex items-center justify-center"
               >
@@ -207,9 +214,9 @@ export default function Home() {
                 </div>
               </div>
               <button
-                onClick={() => {
+                onClick={async () => {
                   console.log('Start Advertising clicked');
-                  redirectToLogin();
+                  await handleGoogleSignIn();
                 }}
                 className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
               >
@@ -485,9 +492,9 @@ export default function Home() {
           </p>
           
           <button
-            onClick={() => {
+            onClick={async () => {
               console.log('Final CTA clicked');
-              redirectToLogin();
+              await handleGoogleSignIn();
             }}
             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-12 py-4 rounded-xl font-semibold text-lg transition-all duration-200 shadow-xl hover:shadow-2xl transform hover:-translate-y-1 inline-flex items-center"
           >

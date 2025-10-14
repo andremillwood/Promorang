@@ -1,27 +1,21 @@
-import path from "path";
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { mochaPlugins } from "@getmocha/vite-plugins";
+import path from "path";
 
 export default defineConfig({
-  base: "./",   // 👈 Add this line
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  plugins: [...mochaPlugins(process.env as any), react(), cloudflare()],
-  server: {
-    allowedHosts: true,
-    host: true,
-    port: 5173,
-    fs: {
-      strict: false,
-    },
-  },
-  build: {
-    chunkSizeWarningLimit: 5000,
-  },
+  base: "./",
+  plugins: [...mochaPlugins({}), cloudflare()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  server: {
+    host: true,
+    port: 5173,
+  },
+  build: {
+    chunkSizeWarningLimit: 5000,
   },
 });

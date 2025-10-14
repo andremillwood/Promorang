@@ -41,9 +41,9 @@
     "wrangler": "^4.33.0"
   },
   "scripts": {
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && npm install --legacy-peer-deps && vite build",
     "cf-typegen": "wrangler types",
-    "check": "tsc && vite build && wrangler deploy --dry-run",
+    "check": "tsc && npm install --legacy-peer-deps && vite build && wrangler deploy --dry-run",
     "dev": "vite",
     "lint": "eslint ."
   }

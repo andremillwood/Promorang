@@ -1,0 +1,34 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+
+  // Core Worker identity
+  "name": "promorang",
+  "main": "src/worker/index.ts",
+
+
+  // Compatibility + environment
+  "compatibility_date": "2025-06-17",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Keep secrets defined in Cloudflare Dashboard between deployments
+  "keep_vars": true,
+
+  // Observability
+  "observability": { "enabled": true },
+
+  // Environment variables (set in Cloudflare Dashboard)
+  "vars": {
+    "GOOGLE_CLIENT_ID": "YOUR_GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET": "YOUR_GOOGLE_CLIENT_SECRET",
+    "JWT_SECRET": "YOUR_JWT_SECRET"
+  },
+
+  // Database binding
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "promorang-db",
+      "database_id": "8c099e67-c157-4573-94a2-fce17dcc0edb"
+    }
+  ]
+}

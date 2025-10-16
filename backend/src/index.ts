@@ -7,24 +7,6 @@ import { verify } from 'hono/jwt'
 import { getCookie, setCookie } from 'hono/cookie'
 import { issueSessionToken } from './utils/session'
 import { ensureUser } from './utils/user'
-import { corsMiddleware } from './middleware/cors'
-import { getEconomyProfile, convertCurrency, getTransactionHistory } from './modules/economy'
-import { listContent, createContent, buyShares } from './modules/content'
-import { listDrops, applyToDrop, getUserApplications } from './modules/drops'
-import { stakeGems, listFundingProjects, createFundingProject } from './modules/growthhub'
-import { getNotifications, markNotificationsRead, createNotification } from './modules/notifications'
-import { createStripeCheckout, handleStripeWebhook, requestWithdrawal } from './modules/payments'
-import { getLeaderboard, getUserRank } from './modules/leaderboard'
-import { getUserAnalytics, getGlobalAnalytics } from './modules/analytics'
-import { triggerAutomation, getCronJobs, updateCronJob } from './modules/automations'
-import { getCommunityFeed, createCommunityActivity, getCommunityStats } from './modules/community'
-import { getRecommendations, analyzeContent, generateForecast, getAIInsights } from './modules/ai'
-import { registerPartner, listPartnerApps, handlePartnerWebhook, getPartnerUsage, validatePartnerApiKey } from './modules/partners'
-import { getRegionInfo, migrateUserToRegion, getRegionLeaderboard } from './modules/region'
-import { exportAnalyticsToWarehouse, getWarehouseData, getBIInsights } from './modules/warehouse'
-import { startAssistantSession, continueAssistantSession, getAssistantSessions, sendCommunityNotification } from './modules/assistant'
-import { moderateContent, approveDrop, auditRewards, getAdminLogs, getAdminDashboard } from './modules/admin'
-import { getSDKDocumentation, generateSDKClient, validateSDKUsage } from './modules/sdk'
 
 type Env = {
   GOOGLE_CLIENT_ID: string
@@ -35,21 +17,8 @@ type Env = {
 
 const app = new Hono<{ Bindings: Env; Variables: { user?: { id: string } } }>()
 
-// 🔍 GLOBAL LOGGING MIDDLEWARE - Track all requests
-app.use('*', async (c, next) => {
-  const url = new URL(c.req.url)
-  console.log('🔍 DEBUG: route incoming —', {
-    path: url.pathname,
-    method: c.req.method,
-    env_keys: Object.keys(c.env || {}),
-    db_exists: !!c.env?.DB
-  })
-  await next()
-})
-
 // ✅ DIAGNOSTIC ENDPOINT - FIRST (before any middleware)
 app.get('/api/debug/env', (c) => {
-  console.log('🔍 DEBUG /api/debug/env — env keys:', Object.keys(c.env || {}))
   return c.json({
     db_bound: !!c.env.DB,
     available_bindings: Object.keys(c.env),
@@ -58,18 +27,17 @@ app.get('/api/debug/env', (c) => {
   })
 })
 
-// ✅ CORS Middleware - Hono's built-in cors with secure configuration
-const allowedOrigins = [
-  'https://promorang.co',
-  'https://www.promorang.co',
-];
-
-app.use('*', cors({
-  origin: (origin) => allowedOrigins.includes(origin) ? origin : allowedOrigins[0],
-  allowMethods: ['GET', 'POST', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-}))
+// ✅ Global CORS — supports cross-domain cookies
+app.use(
+  '*',
+  cors({
+    origin: ['https://promorang.co', 'https://www.promorang.co'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    credentials: true,
+    maxAge: 86400,
+  })
+)
 
 // ✅ Domain Normalization — redirect all www → root domain
 app.use('*', async (c, next) => {
@@ -88,7 +56,7 @@ app.get('/api/health', (c) => c.text('✅ Promorang API Active'))
 // OAuth URL endpoint
 app.get('/api/auth/google/url', (c) => {
   const clientId = c.env.GOOGLE_CLIENT_ID
-  const redirectUri = 'https://api.promorang.co/api/auth/google/callback'
+  const redirectUri = 'https://www.promorang.co/api/auth/google/callback'
   const scope = encodeURIComponent('openid email profile')
   const authUrl =
     `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}` +
@@ -98,13 +66,6 @@ app.get('/api/auth/google/url', (c) => {
 
 // ✅ OAuth callback - inline to ensure env access
 app.get('/api/auth/google/callback', async (c) => {
-  console.log('🔍 DEBUG auth callback — env keys:', Object.keys(c.env || {}))
-  if (!c.env.DB) {
-    console.error('❌ DEBUG: DB undefined in auth callback!')
-  } else {
-    console.log('✅ DEBUG: DB exists in auth callback')
-  }
-  
   try {
     const code = c.req.query('code')
     if (!code) return c.text('Missing code', 400)
@@ -113,7 +74,7 @@ app.get('/api/auth/google/callback', async (c) => {
       code,
       client_id: c.env.GOOGLE_CLIENT_ID,
       client_secret: c.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: 'https://api.promorang.co/api/auth/google/callback',
+      redirect_uri: 'https://www.promorang.co/api/auth/google/callback',
       grant_type: 'authorization_code'
     })
 
@@ -141,16 +102,8 @@ app.get('/api/auth/google/callback', async (c) => {
     }
 
     const googleUser = await userRes.json()
-    
-    // ✅ Defensive check: Ensure DB is available before calling ensureUser
-    if (!c.env.DB) {
-      console.error('❌ CRITICAL: c.env.DB is undefined before ensureUser call')
-      return c.json({ error: 'Database unavailable' }, 500)
-    }
-    console.log('✅ DB available before ensureUser:', !!c.env.DB)
-    
     const user = await ensureUser(c.env.DB, {
-      sub: googleUser.id,
+      google_id: googleUser.id,
       email: googleUser.email,
       name: googleUser.name,
       picture: googleUser.picture
@@ -158,311 +111,58 @@ app.get('/api/auth/google/callback', async (c) => {
 
     const token = await issueSessionToken(c.env.JWT_SECRET, user.id)
     
-    // ✅ Proper Hono cookie setter (cross-domain safe)
     setCookie(c, 'pr_token', token, {
       httpOnly: true,
-      sameSite: 'None',
       secure: true,
+      sameSite: 'None',
+      domain: '.promorang.co',
       path: '/',
-      domain: '.promorang.co',  // ensures cookie works on both promorang.co and www.promorang.co
-      maxAge: 60 * 60 * 24 * 7  // 7 days
+      maxAge: 60 * 60 * 24 * 7
     })
 
     console.log('✅ User logged in:', user.email || user.id)
-    console.log('✅ Cookie set with domain: .promorang.co')
     
-    // ✅ Redirect to auth/success page to allow cookie propagation
-    return c.redirect('https://promorang.co/auth/success', 302)
+    const currentHost = new URL(c.req.url).hostname
+    const baseUrl = currentHost === 'www.promorang.co' ? 'https://promorang.co' : `https://${currentHost}`
+    
+    return c.redirect(`${baseUrl}/auth/success?session=true`, 302)
   } catch (err: any) {
     console.error('💥 OAuth Callback Error:', err)
     return c.json({ error: 'Internal Error', message: err?.message || String(err) }, 500)
   }
 })
 
-// ✅ Logout endpoint - Clear authentication cookie
-app.post('/api/auth/logout', (c) => {
-  console.log('🔍 DEBUG logout initiated')
-
-  // Clear the authentication cookie
-  setCookie(c, 'pr_token', '', {
-    httpOnly: true,
-    sameSite: 'None',
-    secure: true,
-    path: '/',
-    domain: '.promorang.co',
-    maxAge: 0, // Expire immediately
-    expires: new Date(0) // Set to epoch time to expire
-  })
-
-  console.log('✅ User logged out, cookie cleared')
-
-  return c.json({
-    success: true,
-    message: 'Successfully logged out'
-  })
-})
-
-// 🧪 MOCK LOGIN ENDPOINT - For testing without Google OAuth
-app.post('/api/auth/mock', async (c) => {
-  console.log('🧪 Mock login initiated')
-  
-  if (!c.env.DB) {
-    console.error('❌ DB unavailable in mock login')
-    return c.json({ error: 'Database unavailable' }, 500)
-  }
-  
-  try {
-    // Create or get mock test user
-    const mockUserId = 'mock-test-user-' + Date.now()
-    const mockUser = {
-      sub: mockUserId,
-      email: 'test@promorang.co',
-      name: 'Test User',
-      picture: undefined // Let the avatar generator handle it
-    }
-    
-    // Ensure user exists in DB
-    const user = await ensureUser(c.env.DB, mockUser)
-    
-    // Issue JWT token (same as real OAuth flow)
-    const token = await issueSessionToken(c.env.JWT_SECRET, user.id)
-    
-    // Set cookie with same settings as OAuth flow
-    setCookie(c, 'pr_token', token, {
-      httpOnly: true,
-      sameSite: 'None',
-      secure: true,
-      path: '/',
-      domain: '.promorang.co',
-      maxAge: 60 * 60 * 24 * 7  // 7 days
-    })
-    
-    console.log('✅ Mock user logged in:', user.id)
-    console.log('✅ Mock cookie set with domain: .promorang.co')
-    
-    return c.json({ 
-      success: true, 
-      user_id: user.id,
-      message: 'Mock login successful. Cookie set.',
-      next_step: 'Navigate to /auth/success to verify session'
-    })
-  } catch (err: any) {
-    console.error('💥 Mock login error:', err)
-    return c.json({ error: 'Mock login failed', message: err?.message || String(err) }, 500)
-  }
-})
-
 // ✅ Auth middleware for protected routes
-const authMiddleware = async (c: any, next: any) => {
+app.use('/api/economy/*', async (c, next) => {
   const token = getCookie(c, 'pr_token')
-  if (!token) {
-    console.warn('❌ Auth middleware: no pr_token cookie found')
-    return c.json({ error: 'Unauthorized' }, 401)
-  }
+  if (!token) return next()
   try {
     const secret = c.env.JWT_SECRET
-    if (!secret) {
-      console.error('❌ Auth middleware: JWT_SECRET not configured')
-      return c.json({ error: 'Server configuration error' }, 500)
-    }
+    if (!secret) return next()
     const payload = await verify(token, secret)
     if (payload && typeof payload.sub === 'string') {
-      c.set('userId', payload.sub)
       c.set('user', { id: payload.sub })
-      console.log('✅ Auth middleware: user authenticated:', payload.sub)
-    } else {
-      console.warn('❌ Auth middleware: invalid token payload')
-      return c.json({ error: 'Invalid token' }, 401)
     }
-  } catch (err) {
-    console.warn('❌ Auth middleware: token verification failed:', err)
-    return c.json({ error: 'Invalid token' }, 401)
+  } catch (_) {
+    // silently ignore invalid token
   }
   await next()
-}
-
-// ===========================
-// Phase 4: Growth Hub, Notifications, Payments & Leaderboard Routes
-// ===========================
-
-// Growth Hub routes (staking & funding)
-app.post('/api/users/stake', authMiddleware, stakeGems)
-app.get('/api/funding-projects', listFundingProjects)
-app.post('/api/funding-projects', authMiddleware, createFundingProject)
-
-// Notifications routes
-app.get('/api/notifications', authMiddleware, getNotifications)
-app.post('/api/notifications/read', authMiddleware, markNotificationsRead)
-
-// Payments routes (Stripe integration)
-app.post('/api/payments/create-checkout', authMiddleware, createStripeCheckout)
-app.post('/api/payments/webhook', handleStripeWebhook) // No auth for Stripe webhooks
-app.post('/api/payments/withdraw', authMiddleware, requestWithdrawal)
-
-// Leaderboard routes
-app.get('/api/leaderboard', getLeaderboard) // Public
-app.get('/api/leaderboard/rank', authMiddleware, getUserRank) // User's rank
-
-// ===========================
-// Phase 5: Analytics, Automation, Community & Admin Routes
-// ===========================
-
-// Analytics routes
-app.get('/api/analytics/user', authMiddleware, getUserAnalytics)
-app.get('/api/analytics/global', getGlobalAnalytics) // Admin only in production
-
-// Automation routes (cron jobs)
-app.post('/api/automations/trigger', authMiddleware, triggerAutomation)
-app.get('/api/automations/jobs', authMiddleware, getCronJobs)
-app.put('/api/automations/jobs', authMiddleware, updateCronJob)
-
-// Community routes
-app.get('/api/social/feed', getCommunityFeed) // Public
-app.post('/api/social/activity', authMiddleware, createCommunityActivity)
-app.get('/api/social/stats', getCommunityStats) // Public
-
-// Admin routes (staff only)
-app.post('/api/admin/moderate', authMiddleware, moderateContent)
-app.post('/api/admin/approve-drop', authMiddleware, approveDrop)
-app.post('/api/admin/audit-rewards', authMiddleware, auditRewards)
-app.get('/api/admin/logs', authMiddleware, getAdminLogs)
-app.get('/api/admin/dashboard', authMiddleware, getAdminDashboard)
-
-// ===========================
-// Phase 6: AI, Partners, SDK, Region & Warehouse Routes
-// ===========================
-
-// AI & Intelligence routes
-app.post('/api/ai/recommend', authMiddleware, getRecommendations)
-app.post('/api/ai/analyze-content', authMiddleware, analyzeContent)
-app.post('/api/ai/forecast', authMiddleware, generateForecast)
-app.get('/api/ai/insights', getAIInsights) // Public for demo
-
-// Partner API & SDK routes
-app.post('/api/partners/register', authMiddleware, registerPartner)
-app.get('/api/partners/apps', authMiddleware, listPartnerApps)
-app.post('/api/partners/webhook', handlePartnerWebhook) // No auth for partner webhooks
-app.get('/api/partners/usage', authMiddleware, getPartnerUsage)
-app.get('/api/sdk/documentation', getSDKDocumentation) // Public
-app.post('/api/sdk/generate', generateSDKClient) // Public for demo
-app.post('/api/sdk/validate', validateSDKUsage) // API key validation
-
-// Region & Scalability routes
-app.get('/api/region/info', getRegionInfo) // Public
-app.post('/api/region/migrate', authMiddleware, migrateUserToRegion)
-app.get('/api/region/leaderboard', getRegionLeaderboard) // Public
-
-// Data Warehouse & BI routes
-app.post('/api/warehouse/export', authMiddleware, exportAnalyticsToWarehouse)
-app.get('/api/warehouse/data', getWarehouseData) // Public for demo
-app.get('/api/analytics/bi', getBIInsights) // Public for demo
-
-// Assistant & Chat routes
-app.post('/api/assistant/start', authMiddleware, startAssistantSession)
-app.post('/api/assistant/continue', authMiddleware, continueAssistantSession)
-app.get('/api/assistant/sessions', authMiddleware, getAssistantSessions)
-app.post('/api/assistant/notify', authMiddleware, sendCommunityNotification)
-
-// ===========================
-// Phase 2: Economy + Content + Drops Routes
-// ===========================
-
-// Helper function to generate avatar URL from name initials
-function generateAvatarUrl(name: string, email: string): string {
-  if (!name) {
-    // Fallback to email-based avatar
-    const emailHash = btoa(email || 'default').slice(0, 8);
-    return `https://ui-avatars.com/api/?name=${emailHash}&background=00897b&color=ffffff&size=128&format=png`;
-  }
-
-  // Generate initials from name
-  const initials = name
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase())
-    .slice(0, 2)
-    .join('');
-
-  // Use UI Avatars API for consistent avatars
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=00897b&color=ffffff&size=128&format=png`;
-}
-
-// ✅ Economy /me endpoint - inline to ensure env access
-app.get('/api/economy/me', authMiddleware, async (c) => {
-  console.log('🔍 DEBUG economy me — env keys:', Object.keys(c.env || {}))
-
-  // ✅ Defensive check: Ensure DB is available
-  if (!c.env.DB) {
-    console.error('❌ CRITICAL: DB undefined in /api/economy/me!')
-    return c.json({ error: 'Database unavailable' }, 500)
-  }
-  console.log('✅ DB available in /api/economy/me:', !!c.env.DB, 'typeof:', typeof c.env.DB)
-
-  const user = c.get('user')
-  if (!user) return c.json({ error: 'Unauthorized' }, 401)
-
-  const db = c.env.DB
-
-  try {
-    const row = await db.prepare('SELECT * FROM balances WHERE user_id=?')
-      .bind(user.id)
-      .first()
-
-    if (!row) {
-      console.log('📝 Creating balance record for user:', user.id)
-      await db.prepare('INSERT INTO balances (user_id) VALUES (?)')
-        .bind(user.id)
-        .run()
-      return c.json({ user_id: user.id, points: 0, keys: 0, gems: 0, gold: 0 })
-    }
-
-    console.log('✅ Balance retrieved for user:', user.id)
-    return c.json(row)
-  } catch (err: any) {
-    console.error('💥 Database error in /api/economy/me:', err)
-    return c.json({ error: 'Database error', message: err?.message || String(err) }, 500)
-  }
 })
 
-// ✅ User profile endpoint - Frontend expects this path
-app.get('/api/app/users/me', authMiddleware, async (c) => {
-  console.log('🔍 DEBUG app/users/me — env keys:', Object.keys(c.env || {}))
-
-  // ✅ Defensive check: Ensure DB is available
-  if (!c.env.DB) {
-    console.error('❌ CRITICAL: DB undefined in /api/app/users/me!')
-    return c.json({ error: 'Database unavailable' }, 500)
-  }
-  console.log('✅ DB available in /api/app/users/me:', !!c.env.DB, 'typeof:', typeof c.env.DB)
-
+// ✅ Economy /me endpoint - inline to ensure env access
+app.get('/api/economy/me', async (c) => {
   const user = c.get('user')
   if (!user) return c.json({ error: 'Unauthorized' }, 401)
-
+  
   const db = c.env.DB
-
-  try {
-    const userData = await db.prepare('SELECT id, email, name, picture, tier, created_at, updated_at FROM users WHERE id = ?')
-      .bind(user.id)
-      .first()
-
-    if (!userData) {
-      console.log('❌ User not found:', user.id)
-      return c.json({ error: 'User not found' }, 404)
-    }
-
-    console.log('✅ User profile retrieved for:', user.id)
-    return c.json({
-      id: userData.id,
-      email: userData.email,
-      name: userData.name,
-      picture: userData.picture || generateAvatarUrl(userData.name, userData.email),
-      tier: userData.tier,
-      created_at: userData.created_at,
-      updated_at: userData.updated_at
-    })
-  } catch (err: any) {
-    console.error('💥 Database error in /api/app/users/me:', err)
-    return c.json({ error: 'Database error', message: err?.message || String(err) }, 500)
+  const row = await db.prepare('SELECT * FROM balances WHERE user_id=?').bind(user.id).first()
+  
+  if (!row) {
+    await db.prepare('INSERT INTO balances (user_id) VALUES (?)').bind(user.id).run()
+    return c.json({ user_id: user.id, points: 0, keys: 0, gems: 0, gold: 0 })
   }
+  
+  return c.json(row)
 })
 
 // ✅ Content routes (public content feed)
@@ -487,9 +187,25 @@ app.get('/api/drops', async (c) => {
 })
 
 // ✅ Wallet routes
-app.get('/api/users/wallets', authMiddleware, async (c) => {
+app.get('/api/users/wallets', async (c) => {
   console.log('🔍 DEBUG /api/users/wallets called')
-  const user = c.get('user')
+
+  // Check authentication using the same pattern as economy routes
+  const token = getCookie(c, 'pr_token')
+  if (!token) return c.json({ error: 'Unauthorized' }, 401)
+
+  let user: { id: string } | null = null
+  try {
+    const secret = c.env.JWT_SECRET
+    if (!secret) return c.json({ error: 'Server configuration error' }, 500)
+    const payload = await verify(token, secret)
+    if (payload && typeof payload.sub === 'string') {
+      user = { id: payload.sub }
+    }
+  } catch (_) {
+    return c.json({ error: 'Invalid token' }, 401)
+  }
+
   if (!user) return c.json({ error: 'Unauthorized' }, 401)
 
   // Return wallet data - implement wallet fetching logic

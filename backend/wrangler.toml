@@ -18,7 +18,8 @@ STRIPE_WEBHOOK_SECRET = "whsec_..."   # Add your Stripe webhook secret here
 STRIPE_PRICE_ID_10GEMS = "price_..."   # Add your Stripe price ID for 10 gems
 STRIPE_PRICE_ID_47GEMS = "price_..."   # Add your Stripe price ID for 47 gems
 
-[[d1_databases]]
-binding = "DB"
-database_name = "promorang-db"
-database_id = "8c099e67-c157-4573-94a2-fce17dcc0edb"
+# Temporarily commenting out D1 database until properly configured
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "promorang-db"
+# database_id = "8c099e67-c157-4573-94a2-fce17dcc0edb"

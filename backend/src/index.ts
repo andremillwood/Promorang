@@ -102,15 +102,28 @@ app.get('/api/auth/google/callback', async (c) => {
     }
 
     const googleUser = await userRes.json()
-    const user = await ensureUser(c.env.DB, {
-      google_id: googleUser.id,
-      email: googleUser.email,
-      name: googleUser.name,
-      picture: googleUser.picture
-    })
+
+    // Check if database is available for user creation
+    let user
+    if (c.env.DB) {
+      user = await ensureUser(c.env.DB, {
+        google_id: googleUser.id,
+        email: googleUser.email,
+        name: googleUser.name,
+        picture: googleUser.picture
+      })
+    } else {
+      // Create mock user when database is not available
+      user = {
+        id: googleUser.id,
+        email: googleUser.email,
+        name: googleUser.name,
+        picture: googleUser.picture
+      }
+    }
 
     const token = await issueSessionToken(c.env.JWT_SECRET, user.id)
-    
+
     setCookie(c, 'pr_token', token, {
       httpOnly: true,
       secure: true,
@@ -121,10 +134,10 @@ app.get('/api/auth/google/callback', async (c) => {
     })
 
     console.log('✅ User logged in:', user.email || user.id)
-    
+
     const currentHost = new URL(c.req.url).hostname
     const baseUrl = currentHost === 'www.promorang.co' ? 'https://promorang.co' : `https://${currentHost}`
-    
+
     return c.redirect(`${baseUrl}/auth/success?session=true`, 302)
   } catch (err: any) {
     console.error('💥 OAuth Callback Error:', err)
@@ -153,15 +166,21 @@ app.use('/api/economy/*', async (c, next) => {
 app.get('/api/economy/me', async (c) => {
   const user = c.get('user')
   if (!user) return c.json({ error: 'Unauthorized' }, 401)
-  
+
+  // Check if database is available
+  if (!c.env.DB) {
+    console.log('🔍 DEBUG: Database not available, returning mock data')
+    return c.json({ user_id: user.id, points: 0, keys: 0, gems: 0, gold: 0 })
+  }
+
   const db = c.env.DB
   const row = await db.prepare('SELECT * FROM balances WHERE user_id=?').bind(user.id).first()
-  
+
   if (!row) {
     await db.prepare('INSERT INTO balances (user_id) VALUES (?)').bind(user.id).run()
     return c.json({ user_id: user.id, points: 0, keys: 0, gems: 0, gold: 0 })
   }
-  
+
   return c.json(row)
 })
 

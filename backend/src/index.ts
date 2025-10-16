@@ -465,10 +465,39 @@ app.get('/api/app/users/me', authMiddleware, async (c) => {
   }
 })
 
-app.get('/', (c) => c.text('✅ Promorang API Root Active'))
+// ✅ Content routes (public content feed)
+app.get('/api/content', async (c) => {
+  console.log('🔍 DEBUG /api/content called')
+  // Return empty array for now - implement content fetching logic
+  return c.json([])
+})
 
-// ✅ OPTIONS Handler for CORS Preflight (fallback)
-// Hono's cors() middleware handles most cases, but this ensures all OPTIONS requests return 204
-app.options('*', (c) => c.text('', 204 as any))
+app.get('/api/content/sponsored', async (c) => {
+  console.log('🔍 DEBUG /api/content/sponsored called')
+  // Return empty array for now - implement sponsored content logic
+  return c.json([])
+})
 
-export default app
+// ✅ Drops/Tasks routes
+app.get('/api/drops', async (c) => {
+  console.log('🔍 DEBUG /api/drops called')
+  const limit = c.req.query('limit') || '10'
+  // Return empty array for now - implement drops fetching logic
+  return c.json([])
+})
+
+// ✅ Wallet routes
+app.get('/api/users/wallets', authMiddleware, async (c) => {
+  console.log('🔍 DEBUG /api/users/wallets called')
+  const user = c.get('user')
+  if (!user) return c.json({ error: 'Unauthorized' }, 401)
+
+  // Return wallet data - implement wallet fetching logic
+  return c.json({
+    user_id: user.id,
+    points: 0,
+    keys: 0,
+    gems: 0,
+    gold: 0
+  })
+})

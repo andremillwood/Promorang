@@ -56,6 +56,9 @@ app.get('/api/health', (c) => c.text('✅ Promorang API Active'))
 // OAuth URL endpoint
 app.get('/api/auth/google/url', (c) => {
   const clientId = c.env.GOOGLE_CLIENT_ID
+  if (!clientId) {
+    return c.json({ error: 'Google OAuth not configured' }, 500)
+  }
   const redirectUri = 'https://www.promorang.co/api/auth/google/callback'
   const scope = encodeURIComponent('openid email profile')
   const authUrl =
@@ -69,6 +72,11 @@ app.get('/api/auth/google/callback', async (c) => {
   try {
     const code = c.req.query('code')
     if (!code) return c.text('Missing code', 400)
+
+    // Check if OAuth credentials are configured
+    if (!c.env.GOOGLE_CLIENT_ID || !c.env.GOOGLE_CLIENT_SECRET) {
+      return c.json({ error: 'Google OAuth not configured' }, 500)
+    }
 
     const params = new URLSearchParams({
       code,
@@ -120,6 +128,11 @@ app.get('/api/auth/google/callback', async (c) => {
         name: googleUser.name,
         picture: googleUser.picture
       }
+    }
+
+    // Generate session token if JWT_SECRET is available
+    if (!c.env.JWT_SECRET) {
+      return c.json({ error: 'Authentication not configured' }, 500)
     }
 
     const token = await issueSessionToken(c.env.JWT_SECRET, user.id)

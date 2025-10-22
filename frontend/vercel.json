@@ -6,7 +6,7 @@
       "use": "@vercel/static-build"
     }
   ],
-  "buildCommand": "npm install --include=dev && npm run build",
+  "buildCommand": "npm run vercel-build",
   "outputDirectory": "dist",
   "routes": [
     {

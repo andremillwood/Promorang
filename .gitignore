@@ -3,3 +3,35 @@ node_modules/
 .wrangler/
 .dev.vars
 worker-configuration.d.ts
+
+# Environment variables and secrets
+.env*
+!.env.example
+.vercel/
+.vscode/
+*.log
+
+# API keys and credentials
+*.key
+*.pem
+*.p12
+*.pfx
+secrets*
+
+# Build outputs
+build/
+.next/
+.nuxt/
+.output/
+
+# IDE files
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+backend/wrangler.toml
+wrangler.toml*

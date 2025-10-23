@@ -1,19 +1,10 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "dist/**/*",
-      "use": "@vercel/static"
-    }
-  ],
+  "buildCommand": "npm install && npm run build",
+  "outputDirectory": "dist",
+  "framework": null,
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "https://api.promorang.co/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
+    { "src": "/api/(.*)", "dest": "https://api.promorang.co/api/$1" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

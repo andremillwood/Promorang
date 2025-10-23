@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "npm install && npm run build",
+  "buildCommand": "npm install && npm install @rollup/rollup-linux-x64-gnu --force && npm run build",
   "outputDirectory": "dist",
   "framework": null,
   "routes": [

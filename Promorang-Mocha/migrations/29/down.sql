@@ -1,0 +1,1 @@
+DELETE FROM achievements WHERE name IN ('First Steps', 'Social Butterfly', 'Content Creator', 'Drop Master', 'Point Collector', 'Key Keeper', 'Gem Gatherer', 'Weekly Warrior', 'Level Up', 'Gold Rush');

@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "package.json", "use": "@vercel/static-build" }
+  ],
+  "buildCommand": "npm install --force && npm run build",
+  "outputDirectory": "dist",
+  "framework": null,
+  "routes": [
+    { "src": "/api/(.*)", "dest": "https://api.promorang.co/api/$1" },
+    { "src": "/assets/(.*)", "headers": { "Cache-Control": "public, max-age=31536000, immutable" }, "dest": "/assets/$1" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}

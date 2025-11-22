@@ -3,11 +3,10 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 
 export default defineConfig({
-  root: '../Promorang-Mocha/src/react-app', // Point to actual Promorang app
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, '../Promorang-Mocha/src/react-app'),
+      '@': path.resolve(__dirname, './src'),
     },
   },
   server: {
@@ -20,7 +19,7 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: '../../frontend/dist', // Output to frontend/dist for Vercel
+    outDir: 'dist',
     emptyOutDir: true,
     sourcemap: false,
     rollupOptions: {
